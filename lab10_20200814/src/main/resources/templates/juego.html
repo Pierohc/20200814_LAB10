@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Stf-Puzzle Simplified Version</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        #game-container {
+            margin: 20px;
+        }
+        #puzzle {
+            display: grid;
+            gap: 2px;
+        }
+        .piece {
+            border: 1px solid #000;
+            background-size: cover;
+            background-position: center;
+            cursor: pointer;
+        }
+        #controls {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+
+
+    <div style="display: flex;flex-direction: column; justify-content: center; align-items: center; row-gap: 20px">
+        <p1 style="font-size: 20px">Stf-Puzzle Simplified Version</p1>
+        <img src="/img/Crash_Tumbalobos.jpg" style="max-width: 90px">
+        <div style="display: flex;flex-direction: row; column-gap: 20px">
+            <input type="color" id="board-color" value="#ffffff">
+            <input type="text" id="board-size" value="3x3" pattern="\d+x\d+" required>
+        </div>
+        <div>
+            <button id="select-character" style=" cursor:pointer; background-color:#188755; border: none; color: white; padding: 10px; border-radius: 6px">Seleccionar personaje</button>
+            <input type="file" id="file-input" accept="image/jpeg" style="display: none;">
+        </div>
+
+        <div>
+            <button id="start-game" style="display: none; cursor:pointer; background-color:#188755; border: none; color: white; padding: 10px; border-radius: 6px">Iniciar el juego</button>
+        </div>
+
+    </div>
+
+    <br>
+    <br>
+
+    <div style="display: flex;flex-direction: column; align-items: center">
+        <div id="puzzle" style="display: none;"></div>
+        <p id="game-status"></p>
+    </div>
+
+
+
+</div>
+
+<script>
+    let colorFondo = '#ffffff';
+    let tamanioTablero = 3;
+    let imageSrc = null;
+    let puzzleArray = [];
+    let emptyPosition = {};
+
+    document.getElementById('board-color').addEventListener('input', function () {
+        colorFondo = this.value;
+    });
+
+    document.getElementById('board-size').addEventListener('input', function () {
+        const match = this.value.match(/^(\d+)x(\d+)$/);
+        if (match) {
+            tamanioTablero = parseInt(match[1]);
+            document.getElementById('start-game').style.display = 'inline';
+        } else {
+            document.getElementById('start-game').style.display = 'none';
+        }
+    });
+
+    document.getElementById('select-character').addEventListener('click', function () {
+        document.getElementById('file-input').click();
+    });
+
+    document.getElementById('file-input').addEventListener('change', function (event) {
+        const file = event.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                imageSrc = e.target.result;
+                document.getElementById('start-game').style.display = 'inline';
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+
+    document.getElementById('start-game').addEventListener('click', function () {
+        if (imageSrc) {
+            iniciarJuego();
+        }
+    });
+
+    function iniciarJuego() {
+        const puzzle = document.getElementById('puzzle');
+        puzzle.style.display = 'grid';
+        puzzle.style.gridTemplateColumns = `repeat(${tamanioTablero}, 100px)`;
+        puzzle.style.backgroundColor = colorFondo;
+        puzzle.innerHTML = '';
+
+        puzzleArray = [];
+        for (let i = 0; i < tamanioTablero * tamanioTablero - 1; i++) {
+            puzzleArray.push(i);
+        }
+        puzzleArray.push(null);
+
+        shuffleArray(puzzleArray);
+        emptyPosition = { row: tamanioTablero - 1, col: tamanioTablero - 1 };
+
+        for (let i = 0; i < puzzleArray.length; i++) {
+            const piece = document.createElement('div');
+            piece.className = 'piece';
+            piece.style.width = '100px';
+            piece.style.height = '150px';
+            if (puzzleArray[i] !== null) {
+                piece.style.backgroundImage = `url(${imageSrc})`;
+                const row = Math.floor(i / tamanioTablero);
+                const col = i % tamanioTablero;
+                piece.style.backgroundPosition = `${-col * 100 / (tamanioTablero - 3)}% ${-row * 100 / (tamanioTablero - 1)}%`;
+                piece.dataset.index = i;
+                piece.addEventListener('click', movePiece);
+            } else {
+                piece.style.backgroundColor = colorFondo;
+            }
+            puzzle.appendChild(piece);
+        }
+    }
+
+    function movePiece(event) {
+        const index = parseInt(event.target.dataset.index);
+        const row = Math.floor(index / tamanioTablero);
+        const col = index % tamanioTablero;
+        if (isMovable(row, col)) {
+            const emptyIndex = emptyPosition.row * tamanioTablero + emptyPosition.col;
+            [puzzleArray[index], puzzleArray[emptyIndex]] = [puzzleArray[emptyIndex], puzzleArray[index]];
+            updatePuzzle();
+            if (isSolved()) {
+                document.getElementById('game-status').innerText = '¡Juego terminado!';
+            }
+        }
+    }
+
+    function isMovable(row, col) {
+        const rowDiff = Math.abs(row - emptyPosition.row);
+        const colDiff = Math.abs(col - emptyPosition.col);
+        return (rowDiff === 1 && colDiff === 0) || (rowDiff === 0 && colDiff === 1);
+    }
+
+    function updatePuzzle() {
+        const puzzle = document.getElementById('puzzle');
+        puzzle.innerHTML = '';
+        for (let i = 0; i < puzzleArray.length; i++) {
+            const piece = document.createElement('div');
+            piece.className = 'piece';
+            piece.style.width = `calc(100% / ${tamanioTablero} - 2px)`;
+            piece.style.height = `calc(100% / ${tamanioTablero} - 2px)`;
+            if (puzzleArray[i] !== null) {
+                piece.style.backgroundImage = `url(${imageSrc})`;
+                const row = Math.floor(i / tamanioTablero);
+                const col = i % tamanioTablero;
+                piece.style.backgroundPosition = `${-col * 100 / (tamanioTablero - 1)}% ${-row * 100 / (tamanioTablero - 1)}%`;
+                piece.dataset.index = i;
+                piece.addEventListener('click', movePiece);
+            } else {
+                piece.style.backgroundColor = colorFondo;
+                emptyPosition = { row: Math.floor(i / tamanioTablero), col: i % tamanioTablero };
+            }
+            puzzle.appendChild(piece);
+        }
+    }
+
+    function isSolved() {
+        for (let i = 0; i < puzzleArray.length - 1; i++) {
+            if (puzzleArray[i] !== i) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    function shuffleArray(array) {
+        for (let i = array.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [array[i], array[j]] = [array[j], array[i]];
+        }
+    }
+</script>
+
+</body>
+</html>
+
+
+
